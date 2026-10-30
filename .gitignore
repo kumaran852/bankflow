@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Runtime database artefacts (recreated on start / reset)
+data/
+src/data/documents.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.*

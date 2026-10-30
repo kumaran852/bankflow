@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Banking Management System - DBMS Mini Project Prototype</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">BS</div>
+      <div>
+        <div class="brand-title">Banking System</div>
+        <div class="brand-sub">DBMS Mini Project &middot; U25CSG18</div>
+      </div>
+    </div>
+
+    <nav class="nav" id="nav">
+      <button class="nav-item active" data-view="dashboard"><span>1</span>Dashboard</button>
+      <button class="nav-item" data-view="customers"><span>2</span>Customers</button>
+      <button class="nav-item" data-view="accounts"><span>3</span>Accounts</button>
+      <button class="nav-item" data-view="operations"><span>4</span>Banking Operations</button>
+      <button class="nav-item" data-view="history"><span>5</span>Statements</button>
+      <button class="nav-item" data-view="reports"><span>6</span>Queries &amp; Reports</button>
+      <button class="nav-item" data-view="design"><span>7</span>Database Design</button>
+      <button class="nav-item" data-view="tests"><span>8</span>Test Cases</button>
+      <button class="nav-item" data-view="sql"><span>9</span>SQL Source</button>
+      <button class="nav-item" data-view="extras"><span>10</span>MongoDB &amp; B+ Tree</button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="engine">Engine</div>
+      <div class="engine-value" id="engine-label">SQLite (in-process)</div>
+      <button class="btn ghost small" id="reset-btn">Restore demo data</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="view-title">Dashboard</h1>
+        <p id="view-subtitle">Integrated view of the banking database</p>
+      </div>
+      <div class="topbar-actions">
+        <span class="badge ok" id="db-badge">Connected</span>
+      </div>
+    </header>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <!-- 1. DASHBOARD ------------------------------------------------------ -->
+    <section class="view active" id="view-dashboard">
+      <div class="stat-grid" id="stat-grid"></div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Consistency check</h2>
+          <span class="hint">Sum of account balances must equal deposits minus withdrawals &mdash; transfers cancel out.</span>
+        </div>
+        <div id="consistency"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Account summary <span class="tag">view vw_account_summary</span></h2>
+          <span class="hint">accounts &#8902; customers &#8902; branches</span>
+        </div>
+        <div class="table-wrap" id="dashboard-accounts"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Project at a glance</h2></div>
+        <div class="two-col">
+          <ul class="facts">
+            <li><strong>Problem</strong> &mdash; manual/spreadsheet banking records are slow to search, easy to duplicate and unsafe during money transfers.</li>
+            <li><strong>Approach</strong> &mdash; one normalized relational database (3NF) holding branches, employees, customers, accounts and transactions.</li>
+            <li><strong>Guarantee</strong> &mdash; deposit, withdrawal and transfer run inside ACID transactions with validation, row locking and rollback.</li>
+            <li><strong>Audit</strong> &mdash; every balance change writes a row in <code>transactions</code>, so no money moves untraced.</li>
+          </ul>
+          <ul class="facts">
+            <li><strong>Integrity</strong> &mdash; PRIMARY KEY, FOREIGN KEY, NOT NULL, UNIQUE and CHECK constraints plus a delete-guard trigger.</li>
+            <li><strong>Programmability</strong> &mdash; stored procedures, a balance function, a cursor-based interest run and reusable views.</li>
+            <li><strong>Performance</strong> &mdash; composite index on <code>(account_no, txn_time)</code> verified with a query plan.</li>
+            <li><strong>Extras</strong> &mdash; MongoDB-style document CRUD and a B+ Tree simulation for the account index.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. CUSTOMERS ------------------------------------------------------ -->
+    <section class="view" id="view-customers">
+      <div class="split">
+        <div class="card">
+          <div class="card-head"><h2>Register customer</h2><span class="tag">INSERT</span></div>
+          <form id="customer-form" class="form">
+            <label>First name<input name="first_name" value="Divya" required /></label>
+            <label>Last name<input name="last_name" value="Menon" required /></label>
+            <label>Date of birth<input type="date" name="date_of_birth" value="1999-02-14" required /></label>
+            <label>Gender
+              <select name="gender"><option value="F">F</option><option value="M">M</option><option value="O">O</option></select>
+            </label>
+            <label>Phone<input name="phone" value="9000000021" required /></label>
+            <label>E-mail<input name="email" value="divya@example.com" required /></label>
+            <label>ID proof number<input name="id_proof_no" value="ID-0021" required /></label>
+            <label class="wide">Address<input name="address" value="Sample Address 21, Coimbatore" required /></label>
+            <div class="form-actions">
+              <button class="btn primary" type="submit">Register customer</button>
+              <button class="btn" type="button" id="customer-reset">Clear</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h2>Update contact details</h2><span class="tag">UPDATE</span></div>
+          <form id="customer-update-form" class="form">
+            <label>Customer id<input name="customer_id" type="number" value="2" required /></label>
+            <label>New phone<input name="phone" value="9000000011" required /></label>
+            <label class="wide">New address<input name="address" value="New Sample Address, Coimbatore" required /></label>
+            <div class="form-actions">
+              <button class="btn primary" type="submit">Update customer</button>
+            </div>
+          </form>
+          <div class="card-head sub"><h2>Duplicate check</h2><span class="hint">the same query the teller runs before registering</span></div>
+          <form id="duplicate-form" class="form">
+            <label>Phone<input name="phone" value="9000000001" /></label>
+            <label>E-mail<input name="email" value="asha@example.com" /></label>
+            <label>ID proof<input name="id_proof_no" value="ID-0001" /></label>
+            <div class="form-actions"><button class="btn" type="submit">Check for duplicates</button></div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Customers</h2><span class="hint" id="customers-count"></span></div>
+        <div class="table-wrap" id="customers-table"></div>
+      </div>
+    </section>
+
+    <!-- 3. ACCOUNTS ------------------------------------------------------- -->
+    <section class="view" id="view-accounts">
+      <div class="card">
+        <div class="card-head"><h2>Open account</h2><span class="tag">INSERT &middot; AUTO_INCREMENT from 1000100001</span></div>
+        <form id="account-form" class="form inline">
+          <label>Customer<select name="customer_id" id="account-customer"></select></label>
+          <label>Branch<select name="branch_id" id="account-branch"></select></label>
+          <label>Account type
+            <select name="account_type"><option>SAVINGS</option><option>CURRENT</option></select>
+          </label>
+          <div class="form-actions"><button class="btn primary" type="submit">Open account</button></div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Accounts</h2>
+          <span class="hint">status control is an UPDATE so the account history is preserved; DELETE is blocked by the trigger while a balance remains</span>
+        </div>
+        <div class="table-wrap" id="accounts-table"></div>
+      </div>
+    </section>
+
+    <!-- 4. OPERATIONS ----------------------------------------------------- -->
+    <section class="view" id="view-operations">
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-head"><h2>Deposit</h2><span class="tag">sp_deposit</span></div>
+          <form id="deposit-form" class="form">
+            <label>Account number<input name="account_no" type="number" value="1000100001" required /></label>
+            <label>Amount<input name="amount" type="number" step="0.01" value="50000" required /></label>
+            <div class="form-actions"><button class="btn primary" type="submit">Deposit</button></div>
+          </form>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Withdraw</h2><span class="tag">sp_withdraw</span></div>
+          <form id="withdraw-form" class="form">
+            <label>Account number<input name="account_no" type="number" value="1000100001" required /></label>
+            <label>Amount<input name="amount" type="number" step="0.01" value="10000" required /></label>
+            <div class="form-actions"><button class="btn primary" type="submit">Withdraw</button></div>
+          </form>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Fund transfer</h2><span class="tag">sp_transfer</span></div>
+          <form id="transfer-form" class="form">
+            <label>From account<input name="from" type="number" value="1000100001" required /></label>
+            <label>To account<input name="to" type="number" value="1000100002" required /></label>
+            <label>Amount<input name="amount" type="number" step="0.01" value="5000" required /></label>
+            <div class="form-actions"><button class="btn primary" type="submit">Transfer</button></div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Balance enquiry</h2><span class="tag">fn_get_balance</span></div>
+        <form id="balance-form" class="form inline">
+          <label>Account number<input name="account_no" type="number" value="1000100001" required /></label>
+          <div class="form-actions"><button class="btn primary" type="submit">Check balance</button></div>
+        </form>
+        <div id="balance-result" class="result-panel"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Operation log</h2>
+          <span class="hint">status messages returned by the procedures, plus the SQL that produced them</span>
+        </div>
+        <div id="operation-log" class="log"></div>
+      </div>
+    </section>
+
+    <!-- 5. HISTORY -------------------------------------------------------- -->
+    <section class="view" id="view-history">
+      <div class="card">
+        <div class="card-head"><h2>Account statement</h2><span class="tag">JOIN &middot; ORDER BY txn_time DESC &middot; BETWEEN &middot; LIMIT</span></div>
+        <form id="history-form" class="form inline">
+          <label>Account<select name="account_no" id="history-account"></select></label>
+          <label>Rows<select name="limit"><option value="5">Latest 5 (mini statement)</option><option value="10">Latest 10</option><option value="">All rows</option></select></label>
+          <label>From date<input type="date" name="from" /></label>
+          <label>To date<input type="date" name="to" /></label>
+          <div class="form-actions"><button class="btn primary" type="submit">Run statement</button></div>
+        </form>
+        <div class="query-note" id="history-sql"></div>
+        <div class="table-wrap" id="history-table"></div>
+      </div>
+    </section>
+
+    <!-- 6. REPORTS -------------------------------------------------------- -->
+    <section class="view" id="view-reports">
+      <div class="card">
+        <div class="card-head">
+          <h2>Query catalogue</h2>
+          <span class="hint">clauses and operators, aggregates, grouping, joins, set operations and views &mdash; run against the live data</span>
+        </div>
+        <div class="chip-row" id="report-chips"></div>
+        <div id="report-output"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Indexing and query optimisation</h2><span class="tag">EXPLAIN QUERY PLAN</span></div>
+        <div class="two-col">
+          <div>
+            <h3 class="mini">Indexed search</h3>
+            <div class="query-note" id="explain-indexed-sql"></div>
+            <div class="table-wrap" id="explain-indexed"></div>
+          </div>
+          <div>
+            <h3 class="mini">Full scan (no usable index)</h3>
+            <div class="query-note" id="explain-scan-sql"></div>
+            <div class="table-wrap" id="explain-scan"></div>
+          </div>
+        </div>
+        <p class="hint block">
+          The composite index <code>idx_txn_account_time (account_no, txn_time)</code> turns the statement lookup into an
+          index seek, while a predicate on an unindexed column falls back to a full table scan.
+        </p>
+      </div>
+    </section>
+
+    <!-- 7. DATABASE DESIGN ------------------------------------------------ -->
+    <section class="view" id="view-design">
+      <div class="card">
+        <div class="card-head"><h2>Relational schema</h2><span class="hint">PK = primary key, FK = foreign key</span></div>
+        <pre class="code" id="relational-model"></pre>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Relationships and cardinality</h2><span class="tag">ER model</span></div>
+        <ul class="facts" id="relationships"></ul>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Normalization</h2><span class="tag">up to 3NF</span></div>
+        <div class="two-col">
+          <ul class="facts">
+            <li><strong>1NF</strong> &mdash; every attribute is atomic and each table has a primary key; a customer's several accounts are separate rows in <code>accounts</code>, not a repeating group.</li>
+            <li><strong>2NF</strong> &mdash; every table has a single-column key, so no non-key attribute depends on part of a key.</li>
+          </ul>
+          <ul class="facts">
+            <li><strong>3NF</strong> &mdash; no non-key attribute depends on another non-key attribute. Branch details live only in <code>branches</code>; <code>accounts</code> keeps just the <code>customer_id</code> and <code>branch_id</code> references.</li>
+            <li><strong>Design note</strong> &mdash; <code>transactions.balance_after</code> is a deliberate snapshot written in the same transaction as the balance update, so a statement can be printed without recomputing history.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Tables, constraints, views, indexes and triggers</h2><span class="hint">read live from the database catalogue</span></div>
+        <div id="schema-objects"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Access control</h2><span class="tag">DCL</span></div>
+        <p class="hint block">
+          The teller user receives only the privileges needed to serve customers: read access to the master data and EXECUTE on
+          the banking procedures. Direct UPDATE on <code>accounts</code> is deliberately withheld, so balances can only move
+          through the validated procedures.
+        </p>
+        <div class="table-wrap" id="privilege-table"></div>
+        <pre class="code" id="grant-script"></pre>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Implementation note</h2><span class="hint">how the prototype maps onto the MySQL design of the report</span></div>
+        <ul class="facts">
+          <li><strong>Engine</strong> &mdash; the runnable prototype uses the SQL engine built into Node.js (SQLite dialect) so the demonstration needs no server installation. The MySQL 8.0 script remains the primary deliverable and is shown in full under <em>SQL Source</em>.</li>
+          <li><strong>Stored programs</strong> &mdash; <code>sp_deposit</code>, <code>sp_withdraw</code> and <code>sp_transfer</code> run as server-side routines that wrap the same statements in BEGIN IMMEDIATE / COMMIT / ROLLBACK, in the same validation order and returning the identical status messages.</li>
+          <li><strong>Row locking</strong> &mdash; MySQL locks the two account rows with <code>SELECT &hellip; FOR UPDATE</code> in ascending account-number order; the prototype takes the same order inside one exclusive write transaction, so two opposite transfers cannot interleave.</li>
+          <li><strong>Trigger and constraints</strong> &mdash; PRIMARY KEY, FOREIGN KEY, NOT NULL, UNIQUE and CHECK constraints, the delete-guard trigger, both views and both indexes are real objects in the prototype database (see above).</li>
+          <li><strong>Access control</strong> &mdash; <code>CREATE USER</code> / <code>GRANT</code> are MySQL specific, so the privilege matrix above records exactly what the MySQL script grants the teller.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 8. TEST CASES ----------------------------------------------------- -->
+    <section class="view" id="view-tests">
+      <div class="card">
+        <div class="card-head">
+          <h2>Test cases (Appendix II)</h2>
+          <span class="hint">each case runs on its own freshly seeded database, so the demo data is untouched</span>
+        </div>
+        <div class="form-actions">
+          <button class="btn primary" id="run-tests">Run all test cases</button>
+          <span class="badge" id="test-summary">Not run yet</span>
+        </div>
+        <div class="table-wrap" id="tests-table"></div>
+      </div>
+    </section>
+
+    <!-- 9. SQL SOURCE ----------------------------------------------------- -->
+    <section class="view" id="view-sql">
+      <div class="card">
+        <div class="card-head">
+          <h2>Source scripts</h2>
+          <span class="hint">the MySQL 8.0 script is the deliverable for the report (Appendix I); the prototype runs the SQLite equivalent</span>
+        </div>
+        <div class="chip-row">
+          <button class="chip active" data-script="mysql">MySQL 8.0 script (Appendix I)</button>
+          <button class="chip" data-script="schema">Prototype schema (SQLite equivalent)</button>
+          <button class="btn small" id="copy-script">Copy</button>
+        </div>
+        <pre class="code tall" id="script-output">Loading&hellip;</pre>
+      </div>
+    </section>
+
+    <!-- 10. EXTRAS -------------------------------------------------------- -->
+    <section class="view" id="view-extras">
+      <div class="card">
+        <div class="card-head">
+          <h2>Document store CRUD (MongoDB style)</h2>
+          <span class="tag">Experiment 12</span>
+        </div>
+        <p class="hint block">
+          Scanned KYC forms are semi-structured, so they are stored as documents (nested arrays such as <code>branches</code>,
+          no fixed column list). The same four operations are shown with the equivalent mongosh command.
+        </p>
+        <form id="mongo-form" class="form inline">
+          <label>Collection<select name="collection" id="mongo-collection"></select></label>
+          <label>Customer id<input name="customer_id" type="number" value="3" /></label>
+          <label>Customer name<input name="customer_name" value="Meena Devi" /></label>
+          <label>Document type<input name="doc_type" value="Aadhaar" /></label>
+          <label>Document number<input name="doc_number" value="ID-0003" /></label>
+          <div class="form-actions">
+            <button class="btn primary" type="submit">insertOne</button>
+          </div>
+        </form>
+        <div class="table-wrap" id="mongo-table"></div>
+        <div class="query-note" id="mongo-shell"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Relational versus document model</h2></div>
+        <div class="table-wrap" id="mongo-comparison"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>B+ Tree simulation</h2>
+          <span class="tag">Experiment 11</span>
+        </div>
+        <p class="hint block">
+          Order 4 (at most 3 keys per node). Records live only in the linked leaves; internal nodes carry separator keys, which
+          is why a date-range statement needs one descent plus a walk along the leaf chain.
+        </p>
+        <form id="btree-form" class="form inline">
+          <label>Insert key<input name="insert" type="number" placeholder="e.g. 1000100042" /></label>
+          <label>Search key<input name="search" type="number" placeholder="e.g. 1000100003" /></label>
+          <div class="form-actions">
+            <button class="btn primary" type="submit">Apply</button>
+            <button class="btn" type="button" id="btree-reset">Rebuild from accounts</button>
+          </div>
+        </form>
+        <div class="btree-stats" id="btree-stats"></div>
+        <div class="btree" id="btree-canvas"></div>
+        <div id="btree-search" class="result-panel"></div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      Banking Management System &mdash; DBMS Mini Project (Experiment 13). Data shown is regenerated from the sample data set of the report.
+    </footer>
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

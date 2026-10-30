@@ -1,0 +1,14 @@
+{
+  "name": "banking-management-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DBMS Mini Project (U25CSG18, Experiment 13) - Banking Management System prototype",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server.js",
+    "tests": "node --disable-warning=ExperimentalWarning src/tests.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  }
+}
